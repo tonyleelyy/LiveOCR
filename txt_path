@@ -1,1 +1,0 @@
-{"TextDetections": [{"DetectedText": "Hello", "Confidence": 99, "Polygon": [{"X": 8, "Y": 15}, {"X": 46, "Y": 14}, {"X": 46, "Y": 28}, {"X": 8, "Y": 29}], "AdvancedInfo": "{\"Parag\":{\"ParagNo\":1}}", "ItemPolygon": {"X": 10, "Y": 17, "Width": 39, "Height": 15}}], "Language": "zh", "Angel": -1.09375, "RequestId": "9246ec3f-e190-42fd-9132-4f47b3d0ceab"}
