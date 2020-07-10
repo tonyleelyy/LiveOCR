@@ -20,8 +20,8 @@ fp = FilePath()
 
 # 腾讯云Key
 class KEY:
-    SECRET_ID = "AKIDB7nCLGEOaWIn1ONBCyUt50mKYWEgYqaA"
-    SECRET_KEY = "SgNo0YryyiDSQ8gy2xgBPSNgQw5xbzGW"
+    SECRET_ID = "yourid"
+    SECRET_KEY = "yourkey"
 k = KEY()
 
 # 隔多少秒全屏截图一次
