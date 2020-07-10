@@ -1,4 +1,6 @@
 # LiveOCR
+[![version](https://img.shields.io/badge/version-v0.2-orange)]()
+
 使用Python3、OpenCV、腾讯云OCR实现识别屏幕内容，对屏幕特定区域的元素（文字、关卡名、死亡瞬间）进行识别，转化为文字，输出到OBS。
 
 ## 前言
@@ -31,7 +33,7 @@
 
   - 光标定位到文字的左上一些位置，此时的坐标分别填入`left`，`top`。
 
-  ![Inked无标题_LI](https://cdn.jsdelivr.net/gh/tonyleelyy/BlogImages/img/screenshot_left.jpg)
+    ![Inked无标题_LI](https://cdn.jsdelivr.net/gh/tonyleelyy/BlogImages/img/screenshot_left.jpg)
 
   - 光标定位到文字的右下一些位置，此时的坐标分别填入`right`，`bottom`。
 
@@ -47,7 +49,7 @@
 
 - 运行即可开始检测，自动输出图像匹配值。
 
-- 在obs中添加从文件中读取的 `文本（GDI+）`，即可实时显示文字结果。
+- 在obs中添加从 /Capture/result.txt 文件中读取的 `文本（GDI+）`，即可实时显示文字结果。
 
 
 
