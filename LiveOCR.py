@@ -12,10 +12,12 @@ from tencentcloud.ocr.v20181119 import ocr_client, models
 # 文件保存地址
 class FilePath:
     path = 'D:\GitHub\LiveOCR\Capture' # 存储文件的文件夹
-    img_path = '%s/screen.jpg'%(path) # 全屏截图文件名
-    ocr_area = '%s/ocrarea.jpg'%(path) # 文字识别区域截图文件名
-    traget_path = '%s/target.jpg'%(path) # 图像模板截图文件名
-    txt_path = '%s/result.txt'%(path) # 输出文字结果文件名
+    img_path = '%s/screen.jpg'%(path)
+    ocr_area = '%s/ocrarea.jpg'%(path)
+    traget_ocr_path = '%s/target_ocr.jpg'%(path)
+    traget_death_path = '%s/target_death.jpg'%(path)
+    txt_ocr_path = '%s/result_ocr.txt'%(path)
+    txt_death_path = '%s/result_death.txt'%(path)
 fp = FilePath()
 
 # 腾讯云Key
@@ -24,8 +26,14 @@ class KEY:
     SECRET_KEY = "yourkey"
 k = KEY()
 
-# 隔多少秒全屏截图一次
+# 检测频率，单位：秒
 second = 5
+
+# 模式选择，"1"只进行OCR；"2"只进行死亡数统计，"3"同时输出OCR结果和死亡数
+mode = 1
+
+# 运行时重置文本内容，"1"清除所有内容；"2"不清除旧内容
+reset = 1
 
 # OCR识别区域坐标
 class Position:
@@ -35,52 +43,116 @@ class Position:
     bottom = 940 # 识别区域的底部坐标
 p = Position()
 
-# 保存OCR区域截图
-def picocr():
-    ocrarea = ImageGrab.grab(bbox=(p.left, p.top, p.right, p.bottom))
-    ocrarea.save(fp.ocr_area)
-    with open(fp.ocr_area, 'rb') as f:
-        base64_data = base64.b64encode(f.read())
-        s = base64_data.decode()
-        ImageBase64_value = 'data:image/jpeg;base64,%s'%s
+# 识别匹配度，默认0.9，匹配度大于这个值则进行后续操作
+match = 0.9
 
-    try:
-        cred = credential.Credential(k.SECRET_ID, k.SECRET_KEY) 
-        httpProfile = HttpProfile()
-        httpProfile.endpoint = "ocr.ap-guangzhou.tencentcloudapi.com"
-        
-        clientProfile = ClientProfile()
-        clientProfile.httpProfile = httpProfile
-        client = ocr_client.OcrClient(cred, "ap-guangzhou", clientProfile) 
-        
-        req = models.GeneralBasicOCRRequest()
-        params = '{"ImageBase64":"' + ImageBase64_value + '"}'
-        req.from_json_string(params)
+# 清除所有文本内容
+def resetall():
+    with open(fp.txt_ocr_path, 'w') as file:
+        file.truncate(0)
+    with open(fp.txt_death_path, 'w') as file:
+        file.truncate(0)
 
-        resp = client.GeneralBasicOCR(req) 
-        result1 = resp.to_json_string()
+if reset == 1:
+    resetall()
+
+# OCR流程
+class Orecognition():
+    ocrresult = 0
+    def picocr(self):
+        ocrarea = ImageGrab.grab(bbox=(p.left, p.top, p.right, p.bottom))
+        ocrarea.save(fp.ocr_area)
+        with open(fp.ocr_area, 'rb') as f:
+            base64_data = base64.b64encode(f.read())
+            s = base64_data.decode()
+            ImageBase64_value = 'data:image/jpeg;base64,%s'%s
+
+        try:
+            cred = credential.Credential(k.SECRET_ID, k.SECRET_KEY) 
+            httpProfile = HttpProfile()
+            httpProfile.endpoint = "ocr.ap-guangzhou.tencentcloudapi.com"
         
-        with open(fp.txt_path,"w", encoding='utf-8') as f:
-            transjson = json.loads(result1)
-            for item in transjson['TextDetections']:
-                line1 = item['DetectedText']
-                f.write("%s\n" %(line1))
+            clientProfile = ClientProfile()
+            clientProfile.httpProfile = httpProfile
+            client = ocr_client.OcrClient(cred, "ap-guangzhou", clientProfile) 
+        
+            req = models.GeneralBasicOCRRequest()
+            params = '{"ImageBase64":"' + ImageBase64_value + '"}'
+            req.from_json_string(params)
+
+            resp = client.GeneralBasicOCR(req) 
+            Orecognition.ocrresult = resp.to_json_string()
+
+            with open(fp.txt_ocr_path,"w", encoding='utf-8') as f:
+                transjson = json.loads(ocrresult)
+                for item in transjson['TextDetections']:
+                    line = item['DetectedText']
+                    f.write("%s\n" %(line))
     
-    except TencentCloudSDKException as err:
-        print(err)
+        except TencentCloudSDKException as err:
+            print(err)
 
-# 保存全屏截图，并输出相似度
+# 死亡数统计流程
+class Drecognition():
+    deathcount = 0
+    def death(self):
+        Drecognition.deathcount += 1
+
+    def deathsave(self):
+        with open(fp.txt_death_path,"w", encoding='utf-8') as f:
+            f.write("死亡数：%s" %(Drecognition.deathcount))
+
+# 保存全屏截图，输出相似度，判断
 while True:
     time.sleep(second)
     screen = ImageGrab.grab()
     screen.save(fp.img_path)
-    
-    cvscreen = cv2.imread(fp.img_path, 0)
-    cvtarget = cv2.imread(fp.traget_path, 0)
-    cvres = cv2.matchTemplate(cvscreen, cvtarget, cv2.TM_CCOEFF_NORMED)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(cvres)
-    strmin_val = float(max_val)
-    print(strmin_val)
+    strmaxocr_val = 0
+    strmaxdeath_val = 0
 
-    if strmin_val > 0.9:
-        picocr()
+    def cvocr():
+        cvscreen = cv2.imread(fp.img_path, 0)
+        cvtargetocr = cv2.imread(fp.traget_ocr_path, 0)
+        cvresocr = cv2.matchTemplate(cvscreen, cvtargetocr, cv2.TM_CCOEFF_NORMED)
+        min_val, maxocr_val, min_loc, max_loc = cv2.minMaxLoc(cvresocr)
+        global strmaxocr_val
+        strmaxocr_val = float(maxocr_val)
+
+    def cvdeath():
+        cvscreen = cv2.imread(fp.img_path, 0)
+        cvtargetdeath = cv2.imread(fp.traget_death_path, 0)
+        cvresdeath = cv2.matchTemplate(cvscreen, cvtargetdeath, cv2.TM_CCOEFF_NORMED)
+        min_val, maxdeath_val, min_loc, max_loc = cv2.minMaxLoc(cvresdeath)
+        global strmaxdeath_val
+        strmaxdeath_val = float(maxdeath_val)
+    
+    if mode == 1:
+        cvocr()
+        print("\nOCR触发匹配度：%s" %(strmaxocr_val))
+        if strmaxocr_val > match:
+            print("OCR目标识别成功！")
+            oc = Orecognition()
+            oc.picocr()
+    
+    if mode == 2:
+        cvdeath()
+        print("\n死亡触发匹配度：%s" %(strmaxdeath_val))
+        if strmaxdeath_val > match:
+            print("死亡信息识别成功！")
+            dr = Drecognition()
+            dr.death()
+            dr.deathsave()
+    
+    if mode == 3:
+        cvocr()
+        cvdeath()
+        print("\nOCR触发匹配度：%s\n死亡触发匹配度：%a" %(strmaxocr_val, strmaxdeath_val))
+        if strmaxocr_val > match:
+            print("OCR目标识别成功！")
+            oc = Orecognition()
+            oc.picocr()
+        if strmaxdeath_val > match:
+            print("死亡信息识别成功！")
+            dr = Drecognition()
+            dr.death()
+            dr.deathsave()
