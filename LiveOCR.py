@@ -26,8 +26,12 @@ class KEY:
     SECRET_KEY = "yourkey"
 k = KEY()
 
-# 检测频率，单位：秒
+# 检测频率，单位：秒，默认值5
 second = 5
+
+# 检测延迟，在输出结果后停止检测一定时间，单位：秒
+delay_ocr = 10 # OCR输出后的延迟，默认值10
+delay_death = 10 # 死亡数输出后的延迟，默认值10
 
 # 模式选择，"1"只进行OCR；"2"只进行死亡数统计，"3"同时输出OCR结果和死亡数
 mode = 1
@@ -133,6 +137,7 @@ while True:
             print("OCR目标识别成功！")
             oc = Orecognition()
             oc.picocr()
+            time.sleep(delay_ocr)
     
     if mode == 2:
         cvdeath()
@@ -142,17 +147,22 @@ while True:
             dr = Drecognition()
             dr.death()
             dr.deathsave()
+            time.sleep(delay_death)
     
     if mode == 3:
         cvocr()
-        cvdeath()
-        print("\nOCR触发匹配度：%s\n死亡触发匹配度：%a" %(strmaxocr_val, strmaxdeath_val))
+        print("\nOCR触发匹配度：%s" %(strmaxocr_val,))
         if strmaxocr_val > match:
             print("OCR目标识别成功！")
             oc = Orecognition()
             oc.picocr()
+            time.sleep(delay_ocr)
+        
+        cvdeath()
+        print("死亡触发匹配度：%a" %(strmaxdeath_val))
         if strmaxdeath_val > match:
             print("死亡信息识别成功！")
             dr = Drecognition()
             dr.death()
             dr.deathsave()
+            time.sleep(delay_death)
